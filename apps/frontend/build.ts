@@ -16,7 +16,7 @@ const result = await Bun.build({
 
   define: {
     "process.env.NODE_ENV": JSON.stringify("production"),
-    "process.env.OPENAI_API_KEY": JSON.stringify(process.env.OPENAI_API_KEY),
+    // "process.env.OPENAI_API_KEY": JSON.stringify(process.env.OPENAI_API_KEY),
   },
 });;
 
