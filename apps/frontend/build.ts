@@ -6,6 +6,7 @@ const outdir = path.join(process.cwd(), "dist");
 await rm(outdir, { recursive: true, force: true });
 
 const entrypoints = [...new Bun.Glob("src/**/*.html").scanSync()];
+
 const result = await Bun.build({
   entrypoints,
   outdir,
@@ -13,13 +14,18 @@ const result = await Bun.build({
   minify: true,
   target: "browser",
   sourcemap: "linked",
-
   define: {
-    "process.env.NODE_ENV": JSON.stringify("production"),
-    // "process.env.OPENAI_API_KEY": JSON.stringify(process.env.OPENAI_API_KEY),
+    "process.env.NODE_ENV": '"production"',
   },
-});;
+});
+
+if (!result.success) {
+  console.error(result.logs);
+  process.exit(1);
+}
 
 for (const output of result.outputs) {
-  console.log(` ${path.relative(process.cwd(), output.path)}  ${(output.size / 1024).toFixed(1)} KB`);
+  console.log(
+    `${path.relative(process.cwd(), output.path)} ${(output.size / 1024).toFixed(1)} KB`
+  );
 }
