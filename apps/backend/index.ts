@@ -35,6 +35,7 @@ async function toWav(buffer: Buffer): Promise<Buffer> {
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+const PORT = process.env.PORT || 3001;
 
 app.use(express.json());
 app.use(cors());
@@ -266,6 +267,6 @@ app.get("/api/v1/result/:interviewId", async (req, res) => {
   });
 });
 
-app.listen(4000 , () => {
-  console.log("🚀 Server running on http://localhost:4000 ");
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
