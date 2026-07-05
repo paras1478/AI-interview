@@ -5,7 +5,7 @@ import { VoiceOrb } from "./VoiceOrb";
 import { Button } from "./ui/button";
 import { cn } from "@/lib/utils";
 
-const BACKEND_URL = "http://localhost:3001";
+const BACKEND_URL = "http://localhost:4000";
 
 type Message = { type: "Assistant" | "User"; content: string };
 type Phase = "idle" | "starting" | "listening" | "recording" | "thinking" | "speaking" | "done";

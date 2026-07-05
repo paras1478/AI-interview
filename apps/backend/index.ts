@@ -266,6 +266,6 @@ app.get("/api/v1/result/:interviewId", async (req, res) => {
   });
 });
 
-app.listen(3001, () => {
-  console.log("🚀 Server running on http://localhost:3001");
+app.listen(4000 , () => {
+  console.log("🚀 Server running on http://localhost:4000 ");
 });
