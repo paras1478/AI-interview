@@ -40,9 +40,19 @@ const PORT = process.env.PORT || 3001;
 app.use(express.json());
 app.use(cors());
 
-console.log("Backend started");
-console.log("KEY:", process.env.OPENAI_API_KEY?.slice(0, 15));
-console.log("LENGTH:", process.env.OPENAI_API_KEY?.length);
+app.get("/", (req, res) => {
+  res.json({
+    status: "ok",
+    message: "AI Interview Backend is running",
+  });
+});
+
+app.get("/health", (req, res) => {
+  res.json({
+    status: "healthy",
+  });
+});
+
 
 app.get("/test-key", async (_, res) => {
   try {
