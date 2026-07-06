@@ -35,7 +35,7 @@ async function toWav(buffer: Buffer): Promise<Buffer> {
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 4000;
 
 app.use(express.json());
 app.use(cors());
