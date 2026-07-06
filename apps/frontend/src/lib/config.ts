@@ -1,1 +1,1 @@
-export const BACKEND_URL = "https://ai-interview-1-6j2f.onrender.com";
+export const BACKEND_URL = "https://ai-interview-a715.onrender.com";
