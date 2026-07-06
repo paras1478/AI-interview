@@ -13,23 +13,41 @@ export function Form() {
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
-    async function onSubmit() {
-        if (!github.trim()) {
-            toast("Please provide a valid GitHub URL");
-            return;
+   async function onSubmit() {
+    console.log("Button clicked");
+    console.log("Backend URL:", BACKEND_URL);
+    console.log("GitHub:", github);
+
+    if (!github.trim()) {
+        toast("Please provide a valid GitHub URL");
+        return;
+    }
+
+    setLoading(true);
+
+    try {
+        const response = await axios.post(
+            `${BACKEND_URL}/api/v1/pre-interview`,
+            {
+                github: github.trim(),
+            }
+        );
+
+        console.log("Response:", response.data);
+
+        navigate(`/interview/${response.data.id}`);
+    } catch (error) {
+        console.error("Axios Error:", error);
+
+        if (axios.isAxiosError(error)) {
+            console.log("Status:", error.response?.status);
+            console.log("Data:", error.response?.data);
         }
 
-        setLoading(true);
-        try {
-            const response = await axios.post(`${BACKEND_URL}/api/v1/pre-interview`, {
-                github: github.trim(),
-            });
-            navigate(`/interview/${response.data.id}`);
-        } catch (e) {
-            toast("Something went wrong starting your interview. Please try again.");
-            setLoading(false);
-        }
+        toast("Something went wrong starting your interview.");
+        setLoading(false);
     }
+}
 
     return (
         <main className="flex h-screen w-screen items-center justify-center overflow-hidden px-6">

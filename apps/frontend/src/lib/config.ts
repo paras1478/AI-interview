@@ -1,1 +1,1 @@
-export const BACKEND_URL = "http://localhost:4000 ";
+export const BACKEND_URL = "https://ai-interview-1-6j2f.onrender.com";
