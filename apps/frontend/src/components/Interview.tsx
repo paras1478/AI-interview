@@ -4,8 +4,19 @@ import { Bot, Mic, Square, User } from "lucide-react";
 import { VoiceOrb } from "./VoiceOrb";
 import { Button } from "./ui/button";
 import { cn } from "@/lib/utils";
+import { withRetry } from "@/lib/retry";
 
 const BACKEND_URL = "https://ai-interview-a715.onrender.com";
+
+// Render's free tier cold-starts and returns a transient 502 for the first
+// request after idling — treat that as retryable, like a network error.
+async function fetchOrThrow(url: string, init?: RequestInit): Promise<Response> {
+  const res = await fetch(url, init);
+  if (res.status === 502 || res.status === 503) {
+    throw new Error(`Backend unavailable (${res.status})`);
+  }
+  return res;
+}
 
 type Message = { type: "Assistant" | "User"; content: string };
 type Phase = "idle" | "starting" | "listening" | "recording" | "thinking" | "speaking" | "done";
@@ -100,9 +111,11 @@ export function Interview() {
     setPhaseSync("starting");
     setError("");
     try {
-      const res = await fetch(`${BACKEND_URL}/api/v1/interview/${interviewId}/turn`, {
-        method: "POST", body: new FormData(),
-      });
+      const res = await withRetry(() =>
+        fetchOrThrow(`${BACKEND_URL}/api/v1/interview/${interviewId}/turn`, {
+          method: "POST", body: new FormData(),
+        }),
+      );
       await playResponse(res);
     } catch {
       setError("Failed to connect. Check backend is running.");
@@ -170,9 +183,11 @@ export function Interview() {
         form.append("audio", blob, "audio.webm");
 
         try {
-          const res = await fetch(`${BACKEND_URL}/api/v1/interview/${interviewId}/turn`, {
-            method: "POST", body: form,
-          });
+          const res = await withRetry(() =>
+            fetchOrThrow(`${BACKEND_URL}/api/v1/interview/${interviewId}/turn`, {
+              method: "POST", body: form,
+            }),
+          );
           await playResponse(res);
         } catch {
           setError("Network error — please try again.");
@@ -197,6 +212,13 @@ export function Interview() {
   useEffect(() => {
     transcriptRef.current?.scrollTo({ top: transcriptRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
+
+  // Automatically move to the results page once the interview wraps up.
+  useEffect(() => {
+    if (phase !== "done") return;
+    const timer = setTimeout(() => navigate(`/result/${interviewId}`), 1500);
+    return () => clearTimeout(timer);
+  }, [phase, interviewId, navigate]);
 
   const phaseLabel: Record<Phase, string> = {
     idle:      "Ready to start",

@@ -209,6 +209,14 @@ Rules:
       assistantText.toLowerCase().includes("it was great speaking with you") ||
       assistantText.toLowerCase().includes("that concludes");
 
+    if (isEnd) {
+      // Kick off result calculation in the background so it's ready by the time
+      // the frontend navigates to the results page.
+      generateAndStoreResult(interviewId!).catch((err) =>
+        console.error("Background result generation failed:", err)
+      );
+    }
+
     res.set("Content-Type", "audio/mpeg");
     res.set("X-Assistant-Text", encodeURIComponent(assistantText));
     res.set("X-User-Text", encodeURIComponent(userTranscript));
@@ -220,32 +228,47 @@ Rules:
   }
 });
 
-app.post("/api/v1/result/:interviewId", async (req, res) => {
-  const { interviewId } = req.params;
-
+async function generateAndStoreResult(interviewId: string) {
   const messages = await prisma.message.findMany({
     where: { interviewId },
     orderBy: { createdAt: "asc" },
   });
 
-  if (!messages.length) {
-    return res.status(404).json({ message: "No messages found for this interview" });
-  }
+  if (!messages.length) return null;
+
+  const result = await calculateResult(
+    messages.map((m) => ({
+      type: m.type as "Assistant" | "User",
+      message: m.message,
+      createdAt: m.createdAt,
+    }))
+  );
+
+  await prisma.interview.update({
+    where: { id: interviewId },
+    data: {
+      status: "Done",
+      score: Math.round(result.score),
+      feedback: result.feedback,
+      detailedFeedback: {
+        strengths: result.strengths,
+        weaknesses: result.weaknesses,
+        questions: result.questions,
+      },
+    },
+  });
+
+  return result;
+}
+
+app.post("/api/v1/result/:interviewId", async (req, res) => {
+  const { interviewId } = req.params;
 
   try {
-    const result = await calculateResult(
-      messages.map((m) => ({
-        type: m.type as "Assistant" | "User",
-        message: m.message,
-        createdAt: m.createdAt,
-      }))
-    );
-
-    await prisma.interview.update({
-      where: { id: interviewId },
-      data: { status: "Done", score: Math.round(result.score), feedback: result.feedback },
-    });
-
+    const result = await generateAndStoreResult(interviewId!);
+    if (!result) {
+      return res.status(404).json({ message: "No messages found for this interview" });
+    }
     return res.json(result);
   } catch (error) {
     console.error("Result Error:", error);
@@ -265,10 +288,24 @@ app.get("/api/v1/result/:interviewId", async (req, res) => {
     orderBy: { createdAt: "asc" },
   });
 
+  const detailed = (interview.detailedFeedback as {
+    strengths?: string[];
+    weaknesses?: string[];
+    questions?: {
+      question: string;
+      answer: string;
+      verdict: "correct" | "partial" | "incorrect";
+      suggestion: string;
+    }[];
+  } | null) ?? null;
+
   return res.json({
     status: interview.status,
     score: interview.score ?? null,
     feedback: interview.feedback ?? null,
+    strengths: detailed?.strengths ?? [],
+    weaknesses: detailed?.weaknesses ?? [],
+    questions: detailed?.questions ?? [],
     transcript: messages.map((m) => ({
       type: m.type,
       content: m.message,

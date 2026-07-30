@@ -4,6 +4,7 @@ import { Input } from "../components/ui/input";
 import { toast } from "sonner";
 import axios from "axios";
 import { BACKEND_URL } from "@/lib/config";
+import { withRetry } from "@/lib/retry";
 import { useNavigate } from "react-router";
 import { ArrowRight, Loader2, Mic } from "lucide-react";
 import { FaGithub } from "react-icons/fa";
@@ -26,11 +27,10 @@ export function Form() {
     setLoading(true);
 
     try {
-        const response = await axios.post(
-            `${BACKEND_URL}/api/v1/pre-interview`,
-            {
+        const response = await withRetry(() =>
+            axios.post(`${BACKEND_URL}/api/v1/pre-interview`, {
                 github: github.trim(),
-            }
+            }),
         );
 
         console.log("Response:", response.data);
@@ -98,7 +98,9 @@ export function Form() {
                         </Button>
                     </div>
                     <p className="mt-3 text-xs text-muted-foreground">
-                        We'll ask for microphone access once your interview begins.
+                        {loading
+                            ? "Waking up the server — this can take up to 30 seconds if it's been idle."
+                            : "We'll ask for microphone access once your interview begins."}
                     </p>
                 </div>
             </div>
