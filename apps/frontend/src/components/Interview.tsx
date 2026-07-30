@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { Bot, Mic, Square, User } from "lucide-react";
+import { Bot, Mic, PhoneOff, Square, User } from "lucide-react";
 import { VoiceOrb } from "./VoiceOrb";
 import { Button } from "./ui/button";
 import { cn } from "@/lib/utils";
@@ -19,7 +19,7 @@ async function fetchOrThrow(url: string, init?: RequestInit): Promise<Response> 
 }
 
 type Message = { type: "Assistant" | "User"; content: string };
-type Phase = "idle" | "starting" | "listening" | "recording" | "thinking" | "speaking" | "done";
+type Phase = "idle" | "starting" | "listening" | "recording" | "thinking" | "speaking" | "ending" | "done";
 
 export function Interview() {
   const { interviewId } = useParams();
@@ -209,6 +209,32 @@ export function Interview() {
     recorderRef.current?.stop();
   }
 
+  // ── end interview immediately ─────────────────────────────────────────────
+  async function handleEndInterview() {
+    if (phaseRef.current === "ending" || phaseRef.current === "done") return;
+
+    // Stop any in-flight recording/meter without sending its audio.
+    if (recorderRef.current && recorderRef.current.state !== "inactive") {
+      recorderRef.current.onstop = null;
+      recorderRef.current.stop();
+      recorderRef.current.stream.getTracks().forEach((t) => t.stop());
+      stopMeter();
+    }
+
+    setError("");
+    setPhaseSync("ending");
+
+    try {
+      await withRetry(() =>
+        fetchOrThrow(`${BACKEND_URL}/api/v1/result/${interviewId}`, { method: "POST" }),
+      );
+    } catch (e) {
+      console.error("Failed to end interview:", e);
+    }
+
+    navigate(`/result/${interviewId}`);
+  }
+
   useEffect(() => {
     transcriptRef.current?.scrollTo({ top: transcriptRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
@@ -227,15 +253,24 @@ export function Interview() {
     recording: "Recording… press stop when done",
     thinking:  "Thinking…",
     speaking:  "Interviewer speaking…",
+    ending:    "Ending interview…",
     done:      "Interview complete",
   };
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-between bg-background px-6 py-10 gap-6">
-      <header className="w-full max-w-3xl">
-        <h1 className="text-lg font-semibold tracking-tight">AI Interview</h1>
-        <p className="text-sm text-muted-foreground">{phaseLabel[phase]}</p>
-        {error && <p className="mt-1 text-sm text-red-400">{error}</p>}
+      <header className="flex w-full max-w-3xl items-start justify-between">
+        <div>
+          <h1 className="text-lg font-semibold tracking-tight">AI Interview</h1>
+          <p className="text-sm text-muted-foreground">{phaseLabel[phase]}</p>
+          {error && <p className="mt-1 text-sm text-red-400">{error}</p>}
+        </div>
+        {phase !== "idle" && phase !== "ending" && phase !== "done" && (
+          <Button variant="destructive" size="sm" onClick={handleEndInterview}>
+            <PhoneOff className="size-4" />
+            End Interview
+          </Button>
+        )}
       </header>
 
       <div className="flex w-full max-w-3xl items-center justify-center gap-16">
